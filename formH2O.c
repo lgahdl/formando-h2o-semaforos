@@ -6,7 +6,7 @@
 
 #define TRUE 1
 #define FALSE 0
-#define NUM_MOLECULAS 999
+#define NUM_MOLECULAS 32751
 
 void* thread_O(void* arg);
 void* thread_H(void* arg);
@@ -35,18 +35,60 @@ void inicia_variaveis() {
 }
 
 void destroi_variaveis() {
-    sem_destroy(&H_sem);
-    sem_destroy(&O_sem);
-    pthread_mutex_destroy(&mutex);
-    pthread_mutex_destroy(&print_mutex);
-    pthread_barrier_destroy(&barreira);
+    int H_sem_destroyed;
+    int O_sem_destroyed;
+
+    int pthread_mutex_destroyed;
+    int pthread_print_mutex_destroyed;
+    int pthread_barrier_destroyed;
+
+    H_sem_destroyed = sem_destroy(&H_sem);
+    O_sem_destroyed = sem_destroy(&O_sem);
+    pthread_mutex_destroyed = pthread_mutex_destroy(&mutex);
+    pthread_print_mutex_destroyed = pthread_mutex_destroy(&print_mutex);
+    pthread_barrier_destroyed = pthread_barrier_destroy(&barreira);
+
+    if(H_sem_destroyed == 0) {
+        printf("\nH Semaforo Destroyed\n");
+    } else {
+        printf("H Semaforo NOT Destroyed\n");
+    }
+    fflush(stdout);
+    
+    if(O_sem_destroyed == 0) {
+        printf("O Semaforo Destroyed\n");
+    } else {
+        printf("O Semaforo NOT Destroyed\n");
+    }
+    fflush(stdout);
+
+    if(pthread_mutex_destroyed == 0) {
+        printf("Mutex Destroyed\n");
+    } else {
+        printf("Mutex NOT Destroyed, %d\n", pthread_mutex_destroyed);
+    }
+    fflush(stdout);
+
+    if(pthread_print_mutex_destroyed == 0) {
+        printf("Print Mutex Destroyed\n");
+    } else {
+        printf("Print Mutex NOT Destroyed\n");
+    }
+    fflush(stdout);
+
+    if(pthread_barrier_destroyed == 0) {
+        printf("Barreira Destroyed\n");
+    } else {
+        printf("Barreira NOT Destroyed\n");
+    }
+    fflush(stdout);
+
 }
 
 void inicia_threads() {
     srand((unsigned)time(NULL));
     pthread_t molecules[NUM_MOLECULAS];
     int threads_ids[NUM_MOLECULAS];
-
     for (int i = 0; i < NUM_MOLECULAS; i++) {
         threads_ids[i] = i;
         int isH = rand() % 3;
@@ -78,6 +120,7 @@ void* thread_O(void* arg) {
     }
     else {
         if (moleculas_lidas == NUM_MOLECULAS && H < 2) {
+            pthread_mutex_unlock(&mutex);
             print_stock_and_finish_program();
         } else {
             pthread_mutex_unlock(&mutex);
@@ -89,7 +132,7 @@ void* thread_O(void* arg) {
 
     pthread_barrier_wait(&barreira);
     pthread_mutex_unlock(&mutex);
-    return 0;
+    pthread_exit(NULL);
 }
 
 void* thread_H(void* arg) {
@@ -107,6 +150,7 @@ void* thread_H(void* arg) {
     }
     else {
         if (moleculas_lidas == NUM_MOLECULAS) {
+            pthread_mutex_unlock(&mutex);
             print_stock_and_finish_program();
         } else {
             pthread_mutex_unlock(&mutex);
@@ -116,15 +160,14 @@ void* thread_H(void* arg) {
     forma_h2o();
 
     pthread_barrier_wait(&barreira);
-	return 0;
+	pthread_exit(NULL);
 }
 
 void print_stock_and_finish_program(){
     printf("\nTodas as moléculas lidas!\n");
     printf("Estoque H: %d\n", H);
     printf("Estoque O: %d\n", O);
-    fflush(stdout);
-    destroi_variaveis();
+    // destroi_variaveis();
     exit(0);
 }
 
@@ -133,6 +176,7 @@ void forma_h2o() {
     int sem_value_o;
     sem_getvalue(&H_sem, &sem_value_h);
     sem_getvalue(&O_sem, &sem_value_o);
+    
     pthread_mutex_lock(&print_mutex);
     if(sem_value_h == 0 && sem_value_o == 0) {
         pode_imprimir = TRUE;
@@ -146,7 +190,7 @@ void forma_h2o() {
         printf("Estoque H: %d\n", H);
         printf("Estoque O: %d\n", O);
         printf("---------------------------------------------\n\n");
-        fflush(stdout);
+
         if (moleculas_lidas == NUM_MOLECULAS) {
             print_stock_and_finish_program();
         }
